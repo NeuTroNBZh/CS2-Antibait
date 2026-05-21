@@ -12,11 +12,10 @@ public static class GlowModule
     // Slots en attente de création d'entité (évite les doublons de timer)
     private static readonly HashSet<int> _pendingSlots = new();
 
-    // True uniquement entre EventRoundStart et EventRoundEnd.
-    // EventPlayerSpawn fire AVANT EventRoundStart, pendant le scan d'entités du moteur
-    // (breakerandopendoor). Créer des CDynamicProp pendant cette fenêtre provoque le crash
-    // "WriteEnterPVS: GetEntServerClass failed". On bloque la création jusqu'à EventRoundStart.
-    private static bool _roundInProgress = false;
+    // True uniquement après EventRoundFreezeEnd (= après les scans extra-1..extra-4 de
+    // breakerandopendoor). Créer des CDynamicProp avant ce point provoque le crash
+    // "WriteEnterPVS: GetEntServerClass failed" (EF_IN_STAGING_LIST pendant le scan).
+    private static bool _safeToCreate = false;
 
     // ── CheckTransmit ────────────────────────────────────────────────────────
 
@@ -50,14 +49,19 @@ public static class GlowModule
 
     public static HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
-        // Reset du surbrillancé courant — la liste de surveillance persiste entre rounds
         Globals.LastAliveHighlighted = 0;
+        _safeToCreate = false;  // sera mis à true dans OnRoundFreezeEnd
+        return HookResult.Continue;
+    }
 
-        // EventRoundStart fire après les scans de breakerandopendoor : création sûre
-        _roundInProgress = true;
+    public static HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event, GameEventInfo info)
+    {
+        // FreezeEnd fire APRÈS tous les scans extra-N de breakerandopendoor : création sûre
+        _safeToCreate = true;
 
-        Globals.Plugin.AddTimer(0.5f, () =>
+        Globals.Plugin.AddTimer(0.3f, () =>
         {
+            if (!_safeToCreate) return;
             foreach (var player in Util.GetValidPlayers().Where(p => p.PawnIsAlive))
                 ScheduleGlow(player);
         });
@@ -67,7 +71,7 @@ public static class GlowModule
 
     public static HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info)
     {
-        _roundInProgress = false;
+        _safeToCreate = false;
         _pendingSlots.Clear();
 
         foreach (var player in Globals.GlowData.Keys.ToList())
@@ -84,7 +88,7 @@ public static class GlowModule
         if (!Util.IsPlayerEntityValid(player)) return HookResult.Continue;
 
         // Spawn en cours de round (respawn retake) : on peut créer les entités
-        if (_roundInProgress)
+        if (_safeToCreate)
             ScheduleGlow(player);
 
         return HookResult.Continue;
@@ -133,7 +137,7 @@ public static class GlowModule
         }
 
         var aliveT = Util.GetValidPlayers()
-            .Where(p => !p.IsBot && p.Team == CsTeam.Terrorist && p.PawnIsAlive)
+            .Where(p => !p.IsBot && p.Team == CsTeam.CounterTerrorist && p.PawnIsAlive)
             .ToList();
 
         // Pas exactement 1 T vivant → pas de surbrillance
@@ -158,7 +162,7 @@ public static class GlowModule
         ClearLastAliveHighlight();
         Globals.LastAliveHighlighted = last.SteamID;
 
-        if (!Globals.PermanentGlowPlayers.Contains(last.SteamID) && _roundInProgress)
+        if (!Globals.PermanentGlowPlayers.Contains(last.SteamID) && _safeToCreate)
             ScheduleGlow(last);
     }
 
@@ -190,8 +194,7 @@ public static class GlowModule
         {
             _pendingSlots.Remove(player.Slot);
 
-            // Le timer peut fire pendant la fenêtre de scan du prochain round
-            if (!_roundInProgress) return;
+            if (!_safeToCreate) return;
             if (!Util.IsPlayerValid(player) || !player.PawnIsAlive) return;
 
             RemoveGlow(player);
@@ -313,15 +316,16 @@ public static class GlowModule
     public static void Setup()
     {
         Globals.Plugin.RegisterEventHandler<EventRoundStart>(OnRoundStart);
+        Globals.Plugin.RegisterEventHandler<EventRoundFreezeEnd>(OnRoundFreezeEnd);
         Globals.Plugin.RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
         Globals.Plugin.RegisterEventHandler<EventPlayerDeath>(OnPlayerDeath);
         Globals.Plugin.RegisterEventHandler<EventPlayerDisconnect>(OnPlayerDisconnect);
         Globals.Plugin.RegisterEventHandler<EventPlayerSpawn>(OnPlayerSpawn, HookMode.Post);
 
-        // Hot-reload : un round est déjà en cours
+        // Hot-reload : un round est déjà en cours et les scans sont passés
         Globals.Plugin.AddTimer(0.5f, () =>
         {
-            _roundInProgress = true;
+            _safeToCreate = true;
             foreach (var player in Util.GetValidPlayers().Where(p => p.PawnIsAlive))
                 ScheduleGlow(player);
         });
@@ -329,7 +333,7 @@ public static class GlowModule
 
     public static void Cleanup()
     {
-        _roundInProgress = false;
+        _safeToCreate = false;
         _pendingSlots.Clear();
 
         foreach (var data in Globals.GlowData.Values)

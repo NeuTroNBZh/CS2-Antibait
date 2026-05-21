@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CounterStrikeSharp](https://img.shields.io/badge/CounterStrikeSharp-1.0.364-blue)](https://github.com/roflmuffin/CounterStrikeSharp)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple)](https://dotnet.microsoft.com)
-[![Version](https://img.shields.io/badge/version-1.1.0-green)](https://github.com/NeuTroNBZh/Antibait/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-green)](https://github.com/NeuTroNBZh/Antibait/releases)
 
 ---
 
@@ -20,7 +20,7 @@ The plugin is built on top of CounterStrikeSharp and is fully compatible with **
 ## Features
 
 - **Permanent glow** — toggle a persistent through-wall highlight on any player; survives round changes
-- **Last-alive auto-glow** — automatically highlights the last surviving player of each team when the round nears its end
+- **Last-alive auto-glow** — automatically highlights a watched Counter-Terrorist player when they are the sole surviving CT of the round
 - **Team-colored highlights** — Terrorists and Counter-Terrorists get distinct colors; fully configurable
 - **CS2-SimpleAdmin integration** — commands appear automatically in the SimpleAdmin menu if the plugin is loaded
 - **Crash-safe** — entity creation is guarded against the `breakerandopendoor` entity-scan window at round start
@@ -104,9 +104,9 @@ css_antibait_glow PlayerName
 - `<name>` — partial or full player name (case-insensitive). If multiple players match, the command lists the matches and asks for a more specific query.
 - Running the command again on the same player **removes** the glow.
 
-### `!antibait_last <name>` — Watched player last-T-alive glow toggle
+### `!antibait_last <name>` — Watched CT last-alive glow toggle
 
-Adds or removes a specific player from the **last-T-alive watch list**.
+Adds or removes a specific player from the **last-CT-alive watch list**.
 
 ```
 !antibait_last PlayerName
@@ -114,9 +114,9 @@ css_antibait_last PlayerName
 ```
 
 - `<name>` — partial or full player name (case-insensitive).
-- When **active**, the player glows **only when they are the sole surviving Terrorist** of the round.
+- When **active**, the player glows **only when they are the sole surviving Counter-Terrorist** of the round.
 - Running the command again on the same player **removes** them from the watch list.
-- Multiple players can be watched simultaneously; whichever one is the last T alive will glow.
+- Multiple players can be watched simultaneously; whichever one is the last CT alive will glow.
 - The watch list persists across round changes; the active highlight resets each round.
 - If the watched player also has a **permanent glow**, the permanent color takes priority.
 
@@ -124,11 +124,11 @@ css_antibait_last PlayerName
 
 ## Glow Color Priority
 
-When both permanent and last-T-alive conditions apply to the same player, **permanent always wins**:
+When both permanent and last-CT-alive conditions apply to the same player, **permanent always wins**:
 
 ```
 Permanent glow   →  Red    (255, 50, 50)  — admin-defined, persists between rounds
-Last alive T     →  Orange (255, 130, 0)  — auto, round-scoped, only when sole T survivor
+Last alive CT    →  Orange (255, 130, 0)  — auto, round-scoped, only when sole CT survivor
 ```
 
 ---
@@ -138,7 +138,7 @@ Last alive T     →  Orange (255, 130, 0)  — auto, round-scoped, only when so
 If **CS2-SimpleAdmin** is loaded on the server, Antibait registers itself in the admin menu automatically (no additional configuration needed). An **Antibait** category will appear with:
 
 - **Glow permanent sur joueur** — player picker to toggle permanent glow
-- **Toggle glow dernier vivant** — toggle the last-alive feature
+- **Toggle glow dernier CT vivant** — toggle the last-CT-alive feature
 
 The integration is purely optional; the plugin works standalone if SimpleAdmin is absent.
 
@@ -172,7 +172,7 @@ Network visibility of these entities is controlled per-viewer via the `CheckTran
 
 ### Crash prevention
 
-`EventPlayerSpawn` fires **before** `EventRoundStart`, during the engine's entity-scan window used by `breakerandopendoor`. Creating `CDynamicProp` entities during this window causes a `WriteEnterPVS: GetEntServerClass failed` server crash. The `_roundInProgress` flag (set to `true` only inside `EventRoundStart`) blocks all entity creation until it is safe.
+`EventRoundStart` fires **during** `breakerandopendoor`'s entity-scan window (`round_start extra-1` through `extra-4`). Creating `CDynamicProp` entities while entities are still in the engine's staging list causes a `WriteEnterPVS: GetEntServerClass failed` server crash. Antibait uses a `_safeToCreate` flag that is only set to `true` inside `EventRoundFreezeEnd`, which fires **after** all scans complete. All entity creation (round start, player spawn, last-CT-alive trigger) is gated on this flag.
 
 ---
 

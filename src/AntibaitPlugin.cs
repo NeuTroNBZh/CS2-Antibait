@@ -34,7 +34,7 @@ public class AntibaitConfig : BasePluginConfig
 public class AntibaitPlugin : BasePlugin, IPluginConfig<AntibaitConfig>
 {
     public override string ModuleName        => "Antibait";
-    public override string ModuleVersion     => "1.1.0";
+    public override string ModuleVersion     => "1.2.0";
     public override string ModuleAuthor      => "NeuTroNBZh";
     public override string ModuleDescription => "Glow highlight (wallhack) pour joueurs ciblés — visible à travers murs et smokes.";
 
