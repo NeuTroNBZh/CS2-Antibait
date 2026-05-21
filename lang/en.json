@@ -1,0 +1,13 @@
+{
+  "Prefix": "[Antibait]",
+  "antibait.noperm": "Permission denied.",
+  "antibait.glow.on": "Permanent glow enabled for {0}.",
+  "antibait.glow.off": "Permanent glow disabled for {0}.",
+  "antibait.glow.target.on": "{0} has enabled your permanent glow.",
+  "antibait.glow.target.off": "{0} has disabled your permanent glow.",
+  "antibait.last.on": "Last-alive glow: ENABLED.",
+  "antibait.last.off": "Last-alive glow: DISABLED.",
+  "antibait.usage.glow": "Usage: !antibait_glow <name>",
+  "antibait.notfound": "Player not found: '{0}'.",
+  "antibait.ambiguous": "Multiple matches: {0}. Be more specific."
+}

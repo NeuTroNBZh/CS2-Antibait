@@ -1,0 +1,19 @@
+# Build output
+obj/
+bin/
+addons/
+
+# IDE
+.idea/
+.vs/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+
+# Claude Code
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store
