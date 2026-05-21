@@ -33,12 +33,8 @@ public static class CommandGlow
 
         if (Globals.PermanentGlowPlayers.Remove(target.SteamID))
         {
-            // Si ce joueur n'est pas non plus dernier vivant, retirer le glow
-            bool isLastAlive =
-                Globals.LastAliveByTeam[CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist]        == target.SteamID ||
-                Globals.LastAliveByTeam[CounterStrikeSharp.API.Modules.Utils.CsTeam.CounterTerrorist] == target.SteamID;
-
-            if (!isLastAlive)
+            // Retirer le glow sauf si ce joueur est encore surbrillancé comme dernier T vivant
+            if (Globals.LastAliveHighlighted != target.SteamID)
                 GlowModule.RemoveGlow(target);
 
             Util.PrintToChat(admin, $"Glow permanent désactivé pour {target.PlayerName}.");

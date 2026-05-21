@@ -50,9 +50,8 @@ public static class GlowModule
 
     public static HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
-        // Reset états "dernier vivant" — les glows permanents sont conservés
-        Globals.LastAliveByTeam[CsTeam.Terrorist]        = 0;
-        Globals.LastAliveByTeam[CsTeam.CounterTerrorist] = 0;
+        // Reset du surbrillancé courant — la liste de surveillance persiste entre rounds
+        Globals.LastAliveHighlighted = 0;
 
         // EventRoundStart fire après les scans de breakerandopendoor : création sûre
         _roundInProgress = true;
@@ -74,8 +73,7 @@ public static class GlowModule
         foreach (var player in Globals.GlowData.Keys.ToList())
             RemoveGlow(player);
 
-        Globals.LastAliveByTeam[CsTeam.Terrorist]        = 0;
-        Globals.LastAliveByTeam[CsTeam.CounterTerrorist] = 0;
+        Globals.LastAliveHighlighted = 0;
 
         return HookResult.Continue;
     }
@@ -100,7 +98,7 @@ public static class GlowModule
         _pendingSlots.Remove(player.Slot);
         RemoveGlow(player);
 
-        if (Globals.LastAliveEnabled)
+        if (Globals.LastAliveWatched.Count > 0)
             Globals.Plugin.AddTimer(0.1f, CheckLastAlive);
 
         return HookResult.Continue;
@@ -114,50 +112,63 @@ public static class GlowModule
         _pendingSlots.Remove(player.Slot);
         RemoveGlow(player);
         Globals.PermanentGlowPlayers.Remove(player.SteamID);
+        Globals.LastAliveWatched.Remove(player.SteamID);
 
-        if (Globals.LastAliveEnabled)
+        if (Globals.LastAliveWatched.Count > 0)
             Globals.Plugin.AddTimer(0.1f, CheckLastAlive);
 
         return HookResult.Continue;
     }
 
-    // ── Logique dernier vivant ───────────────────────────────────────────────
+    // ── Logique dernier T vivant ─────────────────────────────────────────────
 
+    // Vérifie si un joueur de LastAliveWatched est l'unique T encore en vie.
+    // Si oui, il est surbrillancé. Si non, le surbrillancé actuel est retiré.
     public static void CheckLastAlive()
     {
-        foreach (var team in new[] { CsTeam.Terrorist, CsTeam.CounterTerrorist })
+        if (Globals.LastAliveWatched.Count == 0)
         {
-            var alive = Util.GetValidPlayers()
-                .Where(p => !p.IsBot && p.Team == team && p.PawnIsAlive)
-                .ToList();
-
-            if (alive.Count != 1)
-            {
-                // Plus exactement 1 vivant — retirer le highlight dernier vivant
-                ClearLastAliveForTeam(team);
-                continue;
-            }
-
-            var last = alive[0];
-            if (Globals.LastAliveByTeam[team] == last.SteamID) continue; // Déjà traité
-
-            ClearLastAliveForTeam(team);
-            Globals.LastAliveByTeam[team] = last.SteamID;
-
-            // Si le joueur a déjà un glow permanent, pas besoin de re-scheduler
-            if (!Globals.PermanentGlowPlayers.Contains(last.SteamID) && _roundInProgress)
-                ScheduleGlow(last);
+            ClearLastAliveHighlight();
+            return;
         }
+
+        var aliveT = Util.GetValidPlayers()
+            .Where(p => !p.IsBot && p.Team == CsTeam.Terrorist && p.PawnIsAlive)
+            .ToList();
+
+        // Pas exactement 1 T vivant → pas de surbrillance
+        if (aliveT.Count != 1)
+        {
+            ClearLastAliveHighlight();
+            return;
+        }
+
+        var last = aliveT[0];
+
+        // Le dernier T vivant n'est pas dans la liste de surveillance
+        if (!Globals.LastAliveWatched.Contains(last.SteamID))
+        {
+            ClearLastAliveHighlight();
+            return;
+        }
+
+        // Déjà en surbrillance
+        if (Globals.LastAliveHighlighted == last.SteamID) return;
+
+        ClearLastAliveHighlight();
+        Globals.LastAliveHighlighted = last.SteamID;
+
+        if (!Globals.PermanentGlowPlayers.Contains(last.SteamID) && _roundInProgress)
+            ScheduleGlow(last);
     }
 
-    private static void ClearLastAliveForTeam(CsTeam team)
+    private static void ClearLastAliveHighlight()
     {
-        ulong prevId = Globals.LastAliveByTeam[team];
+        ulong prevId = Globals.LastAliveHighlighted;
         if (prevId == 0) return;
 
-        Globals.LastAliveByTeam[team] = 0;
+        Globals.LastAliveHighlighted = 0;
 
-        // Retirer le glow seulement si ce joueur n'est pas non plus permanent
         if (Globals.PermanentGlowPlayers.Contains(prevId)) return;
 
         var prev = Util.GetValidPlayers().FirstOrDefault(p => p.SteamID == prevId);
@@ -275,7 +286,7 @@ public static class GlowModule
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    // Détermine si le joueur doit être en surbrillance et sa couleur
+    // Détermine si le joueur doit être en surbrillance et quelle couleur lui appliquer
     public static bool NeedsGlow(CCSPlayerController player, out Color color)
     {
         color = Color.Transparent;
@@ -287,19 +298,11 @@ public static class GlowModule
             return true;
         }
 
-        if (Globals.LastAliveEnabled)
+        if (Globals.LastAliveHighlighted == player.SteamID)
         {
-            bool isLastT  = Globals.LastAliveByTeam[CsTeam.Terrorist]        == player.SteamID;
-            bool isLastCT = Globals.LastAliveByTeam[CsTeam.CounterTerrorist] == player.SteamID;
-
-            if (isLastT || isLastCT)
-            {
-                var c = Globals.Config;
-                color = isLastT
-                    ? Color.FromArgb(255, c.LastAliveT_R,  c.LastAliveT_G,  c.LastAliveT_B)
-                    : Color.FromArgb(255, c.LastAliveCT_R, c.LastAliveCT_G, c.LastAliveCT_B);
-                return true;
-            }
+            var c = Globals.Config;
+            color = Color.FromArgb(255, c.LastAliveT_R, c.LastAliveT_G, c.LastAliveT_B);
+            return true;
         }
 
         return false;

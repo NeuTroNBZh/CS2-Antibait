@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CounterStrikeSharp](https://img.shields.io/badge/CounterStrikeSharp-1.0.364-blue)](https://github.com/roflmuffin/CounterStrikeSharp)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple)](https://dotnet.microsoft.com)
-[![Version](https://img.shields.io/badge/version-1.0.0-green)](https://github.com/NeuTroNBZh/Antibait/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-green)](https://github.com/NeuTroNBZh/Antibait/releases)
 
 ---
 
@@ -76,10 +76,6 @@ The config file is generated automatically with the following defaults:
   "LastAlive_T_G": 130,
   "LastAlive_T_B": 0,
 
-  "LastAlive_CT_R": 0,
-  "LastAlive_CT_G": 180,
-  "LastAlive_CT_B": 255,
-
   "ConfigVersion": 1
 }
 ```
@@ -88,8 +84,7 @@ The config file is generated automatically with the following defaults:
 |---|---|---|
 | `AdminPermission` | CSS permission flag required to use commands | `@css/cheats` |
 | `PermanentGlow_R/G/B` | Color of the permanent glow (RGB) | Red `255, 50, 50` |
-| `LastAlive_T_R/G/B` | Glow color for the last alive Terrorist | Orange `255, 130, 0` |
-| `LastAlive_CT_R/G/B` | Glow color for the last alive Counter-Terrorist | Blue `0, 180, 255` |
+| `LastAlive_T_R/G/B` | Glow color for the watched last alive Terrorist | Orange `255, 130, 0` |
 
 ---
 
@@ -109,29 +104,31 @@ css_antibait_glow PlayerName
 - `<name>` — partial or full player name (case-insensitive). If multiple players match, the command lists the matches and asks for a more specific query.
 - Running the command again on the same player **removes** the glow.
 
-### `!antibait_last` — Last-alive auto-glow toggle
+### `!antibait_last <name>` — Watched player last-T-alive glow toggle
 
-Toggles automatic glow highlighting for the last surviving player of each team.
+Adds or removes a specific player from the **last-T-alive watch list**.
 
 ```
-!antibait_last
-css_antibait_last
+!antibait_last PlayerName
+css_antibait_last PlayerName
 ```
 
-- When **enabled**, as soon as a team reaches exactly 1 survivor, that player becomes highlighted in the team color (orange for T, blue for CT).
-- The highlight is removed at round end and re-evaluated at every player death.
-- If the last-alive player already has a **permanent glow**, the permanent color takes priority.
+- `<name>` — partial or full player name (case-insensitive).
+- When **active**, the player glows **only when they are the sole surviving Terrorist** of the round.
+- Running the command again on the same player **removes** them from the watch list.
+- Multiple players can be watched simultaneously; whichever one is the last T alive will glow.
+- The watch list persists across round changes; the active highlight resets each round.
+- If the watched player also has a **permanent glow**, the permanent color takes priority.
 
 ---
 
 ## Glow Color Priority
 
-When both permanent and last-alive conditions apply to the same player, **permanent always wins**:
+When both permanent and last-T-alive conditions apply to the same player, **permanent always wins**:
 
 ```
-Permanent glow   →  Red   (255, 50, 50)   — admin-defined, persists between rounds
-Last alive T     →  Orange (255, 130, 0)  — auto, round-scoped
-Last alive CT    →  Blue   (0, 180, 255)  — auto, round-scoped
+Permanent glow   →  Red    (255, 50, 50)  — admin-defined, persists between rounds
+Last alive T     →  Orange (255, 130, 0)  — auto, round-scoped, only when sole T survivor
 ```
 
 ---

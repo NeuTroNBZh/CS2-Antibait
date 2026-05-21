@@ -1,6 +1,5 @@
 using System;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Utils;
 using Antibait.Models;
 
 namespace Antibait;
@@ -24,16 +23,11 @@ public static class Globals
     // SteamID64 des joueurs avec glow permanent (persiste entre les rounds)
     public static HashSet<ulong> PermanentGlowPlayers { get; } = new();
 
-    // Toggle "dernier vivant" (persiste entre les rounds)
-    public static bool LastAliveEnabled { get; set; } = false;
+    // SteamID64 des joueurs surveillés pour le "dernier T vivant" (persiste entre les rounds)
+    public static HashSet<ulong> LastAliveWatched { get; } = new();
 
-    // SteamID du joueur actuellement mis en évidence comme dernier vivant, par équipe
-    // 0 = aucun
-    public static Dictionary<CsTeam, ulong> LastAliveByTeam { get; } = new()
-    {
-        [CsTeam.Terrorist]        = 0,
-        [CsTeam.CounterTerrorist] = 0,
-    };
+    // SteamID du joueur actuellement surbrillancé comme dernier T vivant (0 = aucun, reset chaque round)
+    public static ulong LastAliveHighlighted { get; set; } = 0;
 
     // Entités CDynamicProp actives (glow) par joueur — recréées à chaque round
     public static Dictionary<CCSPlayerController, GlowData> GlowData { get; } = new();
@@ -42,9 +36,8 @@ public static class Globals
     public static void Reset()
     {
         PermanentGlowPlayers.Clear();
-        LastAliveEnabled = false;
-        LastAliveByTeam[CsTeam.Terrorist]        = 0;
-        LastAliveByTeam[CsTeam.CounterTerrorist] = 0;
+        LastAliveWatched.Clear();
+        LastAliveHighlighted = 0;
         GlowData.Clear();
     }
 }

@@ -26,10 +26,6 @@ public class AntibaitConfig : BasePluginConfig
     [JsonPropertyName("LastAlive_T_G")]   public byte LastAliveT_G  { get; set; } = 130;
     [JsonPropertyName("LastAlive_T_B")]   public byte LastAliveT_B  { get; set; } = 0;
 
-    // Couleur du glow "dernier CT vivant"
-    [JsonPropertyName("LastAlive_CT_R")]  public byte LastAliveCT_R { get; set; } = 0;
-    [JsonPropertyName("LastAlive_CT_G")]  public byte LastAliveCT_G { get; set; } = 180;
-    [JsonPropertyName("LastAlive_CT_B")]  public byte LastAliveCT_B { get; set; } = 255;
 }
 
 // ── Plugin principal ─────────────────────────────────────────────────────────
@@ -38,7 +34,7 @@ public class AntibaitConfig : BasePluginConfig
 public class AntibaitPlugin : BasePlugin, IPluginConfig<AntibaitConfig>
 {
     public override string ModuleName        => "Antibait";
-    public override string ModuleVersion     => "1.0.0";
+    public override string ModuleVersion     => "1.1.0";
     public override string ModuleAuthor      => "NeuTroNBZh";
     public override string ModuleDescription => "Glow highlight (wallhack) pour joueurs ciblés — visible à travers murs et smokes.";
 
@@ -160,21 +156,21 @@ public class AntibaitPlugin : BasePlugin, IPluginConfig<AntibaitConfig>
         dapi.RegisterMenu("antibait", "antibait_glow", "Glow permanent sur joueur",
                           glowFactory, Config.AdminPermission, "css_antibait_glow");
 
-        // Entrée 2 : toggle glow dernier vivant
+        // Entrée 2 : surveiller un joueur pour le glow "dernier T vivant"
         Func<CCSPlayerController, object> lastFactory = (admin) =>
         {
-            var menu  = dapi.CreateMenuWithBack("Glow dernier vivant", "antibait", admin);
-            string st = Globals.LastAliveEnabled ? "ACTIVÉ" : "DÉSACTIVÉ";
-            dapi.AddMenuOption(menu, $"Statut : {st} — cliquer pour toggle",
-                new Action<CCSPlayerController>(adminSel =>
-                {
-                    CommandGlowLast.ToggleLastAlive(adminSel);
-                    try { dapi.LogCommand(adminSel, "css_antibait_last"); } catch { }
-                }),
-                false, null);
-            return menu;
+            var filter = new Func<CCSPlayerController, bool>(p =>
+                p != null && p.IsValid && !p.IsBot);
+
+            var onSelect = new Action<CCSPlayerController, CCSPlayerController>((adminSel, target) =>
+            {
+                CommandGlowLast.ToggleLastAlive(adminSel, target);
+                try { dapi.LogCommand(adminSel, $"css_antibait_last {target.PlayerName}"); } catch { }
+            });
+
+            return dapi.CreateMenuWithPlayers("Suivi dernier T vivant", "antibait", admin, filter, onSelect);
         };
-        dapi.RegisterMenu("antibait", "antibait_last", "Toggle glow dernier vivant",
+        dapi.RegisterMenu("antibait", "antibait_last", "Suivi dernier T vivant (toggle)",
                           lastFactory, Config.AdminPermission, "css_antibait_last");
     }
 }
