@@ -126,9 +126,13 @@ css_antibait_last PlayerName
 
 When both permanent and last-CT-alive conditions apply to the same player, **permanent always wins**:
 
-```
-Permanent glow   →  Red    (255, 50, 50)  — admin-defined, persists between rounds
-Last alive CT    →  Orange (255, 130, 0)  — auto, round-scoped, only when sole CT survivor
+```mermaid
+flowchart TD
+    A[Player has glow condition] --> B{Permanent glow set?}
+    B -->|Yes| C["Red (255, 50, 50)\nadmin-defined, persists across rounds"]
+    B -->|No| D{Sole surviving\nwatched CT?}
+    D -->|Yes| E["Orange (255, 130, 0)\nauto, round-scoped"]
+    D -->|No| F[No glow]
 ```
 
 ---
