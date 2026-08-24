@@ -137,8 +137,8 @@ Last alive CT    →  Orange (255, 130, 0)  — auto, round-scoped, only when so
 
 If **CS2-SimpleAdmin** is loaded on the server, Antibait registers itself in the admin menu automatically (no additional configuration needed). An **Antibait** category will appear with:
 
-- **Glow permanent sur joueur** — player picker to toggle permanent glow
-- **Toggle glow dernier CT vivant** — toggle the last-CT-alive feature
+- **Permanent Glow on Player** — player picker to toggle permanent glow
+- **Toggle Last CT Alive Glow** — toggle the last-CT-alive feature
 
 The integration is purely optional; the plugin works standalone if SimpleAdmin is absent.
 
